@@ -4,7 +4,7 @@ Back up manually any file/directory matching an expression with this command lin
 ## usage
    bck [options] [expression]
 
-   Back up any file/directory matching the [expression]. The match use find command and recognize any exprsesion find recognize.  
+   Back up any file/directory matching the [expression]. The match use `find` command and recognize any exprsesion find recognize.  
    **By default, the backup directory is set to `~/.BACKUP`.**  
    
    NOTE: **don't use `sudo bck`**, `bck` will automatically ask for sudo permission if needed from its script. Using `sudo bck` cause to potentially loose file permissions, as the files will be backed with a root ownership.
@@ -22,6 +22,9 @@ Back up manually any file/directory matching an expression with this command lin
 
 ## install
 Just copy `bck` file in `/usr/local/bin` or any bin path.
+
+## dependencies
+`bck` need no dependencies. It use only the linux built-in commands.
 
 ## config
 A config file setting the backup directory can be write at `~/.bckrc` or `~/.config/bck/bckrc`. By default, the backup directory is set to `~/.BACKUP`.
