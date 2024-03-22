@@ -1,0 +1,207 @@
+#!/bin/bash
+# MADE by Twix. https://github.com/Twix53791/
+#================================================
+# Backup files/dir in ~/.BACKUP or any directory
+# with the full path included
+#================================================
+#
+# Usages:
+#   bck toto.pdf tata* *.py
+#       will back toto.pdf, all tata* files, and all py files in
+#       the current directory
+#
+#   bck *
+#       will backup all the content of the current dir
+#
+#   bck -x toto.pdf *.py tata
+#       will backup all the content of the current directory
+#       except the file toto.pdf, the .py files, and tata,
+#       which is in this case a directory
+#
+#   bck -f
+#       will backup all the files skipping all the directories
+#
+#   bck -d
+#       will backup all the directories, skipping the files
+#
+#   bck -o "my backup"
+#       will backup to the directory 'my backup'
+#
+#   bck -O
+#       will backup the whole content of the current dir
+#       in a subdir '.BACKUP' in this dir.
+#
+#   example:
+#       bck -o ~/.BACKUP -f -x toto.pm -- *.pm
+#     will save in ~/.BACKUP all the .pm files of the
+#     current dir except toto.pm
+#================================================
+
+_get_args (){
+    while getopts "hfdDOo:x:" arg; do
+        case $arg in
+            f) [[ -z $onlydir ]] && onlyfile=1;;
+            d) [[ -z $onlyfile ]] && onlydir=1;;
+            o) bckdir="${OPTARG}";;
+            O) bckdir="$PWD/.BACKUP";;
+            x)  OPTIND=$(($OPTIND - 1)) # set the index to the next arg (OPTARG)
+                Xlist=()
+
+                until [[ $(eval "echo \${$OPTIND}") =~ ^-.* || -z $(eval "echo \${$OPTIND}") ]]; do
+                    optarg=$(eval "echo \${$OPTIND}")
+                    Xlist+=("$optarg")
+                    OPTIND=$((OPTIND + 1))
+                done
+                ;;
+            h) _help;;
+            D) debug=1;;
+        esac
+    done
+}
+
+_ignore (){
+    if [[ $debug == 1 ]]; then
+        for e in "${Xlist[@]}"; do echo "X $e"; done
+        echo "=============="
+    fi
+
+    find "${Xlist[@]}" > $tmpxf
+}
+
+_find (){
+    if [[ $debug == 1 ]]; then
+        [[ -z $@ ]] && echo "no arguments"
+        for e in "$@"; do echo "ARG $e"; done
+        echo "=============="
+    fi
+
+    _ignore
+
+    if [[ $onlyfile == 1 ]]; then
+        if [[ -z $@ ]]; then
+            find .* * -maxdepth 0 -type f > $tmpff
+        else
+            find "$@" -maxdepth 0 -type f > $tmpff
+        fi
+
+    elif [[ $onlydir == 1 ]]; then
+        if [[ -z $@ ]]; then
+            while read line; do
+                find "$line" >> $tmpff
+            done < <(find .* * -type d)
+        else
+            while read line; do
+                find "$line" >> $tmpff
+            done < <(find "$@" -type d)
+        fi
+
+    else
+        if [[ -z $@ ]]; then
+            find .* * > $tmpff
+        else
+            find "$@" > $tmpff
+        fi
+
+    fi
+}
+
+_copy_to_save (){
+    # Set the backup directory
+    conf1="$HOME/.bckrc"
+    conf2="$HOME/.config/bck/bckrc"
+
+    [[ -f $conf1 && -z $bckdir ]] && bckdir="$(< $conf1)"
+    [[ -f $conf2 && -z $bckdir ]] && bckdir="$(< $conf2)"
+    [[ -z $bckdir ]] && bckdir="$HOME/.BACKUP"
+
+    # bckdir abs path
+    [[ ${bckdir:0:1} != "/" ]] && bckdir="$PWD/$bckdir"
+
+    # Create the destination basedir if it doesn't exist
+
+    # copy files/dirs, one by one
+    while read fpath; do
+        # Set the source/destination paths
+        if [[ ${fpath:0:1} == "/" ]]; then
+            src="$fpath"
+            destination=$(dirname "$bckdir$fpath")
+        else
+            src="$PWD/$fpath"
+            destination=$(dirname "$bckdir$PWD/$fpath")
+        fi
+
+        # Debug
+        [[ $debug == 1 ]] && echo "$src - - > $destination"
+
+        # Create destination directory
+        target="$destination"
+
+        until [[ -d $target ]]; do
+            target=$(dirname "$target")
+        done
+
+        if [[ $target != $destination ]]; then
+            [[ $debug == 1 ]] && mkopts="-vp" || mkopts="-p"
+
+            if [[ ! -w $target ]]; then
+                [[ $debug == 1 ]] && echo "sudo mkdir -vp"
+                sudo mkdir "$mkopts" "$destination"
+            else
+                [[ $debug == 1 ]] && echo "mkdir -p"
+                mkdir "$mkopts" "$destination"
+            fi
+        fi
+
+        # Copy src to destination
+        if [[ ! -O $src || ! -O $destination ]]; then
+            [[ $debug == 1 ]] && echo "sudo cp -v -r -u"
+            sudo cp -v -r -u "$src" "$destination"
+        else
+            [[ $debug == 1 ]] && echo "cp -v -r -u"
+            cp -v -r -u "$src" "$destination"
+        fi
+    done < <(grep -v -x -f $tmpxf $tmpff)
+
+}
+
+_help (){
+cat <<EOF
+Back up manually any file/directory
+
+USAGE:
+   bck [options] [expression]
+
+   Back up any file/directory matching the [expression].
+   The match use find command and recognize any exprsesion find recognize.
+
+options:
+   -f                   back up only files (ignore directories)
+   -d                   back up only directories (ignore files)
+   -o [dir]             set the backup directory
+   -O                   back up at '.BACKUP' in the current directory
+   -x [expression]      exclude the locations matching the [expression] pattern
+   -h                   this help
+   -D                   debug
+EOF
+exit
+}
+
+#======================================================
+
+main (){
+    tmpff="/tmp/bck-find-results"
+    tmpxf="/tmp/bck-ignore-list"
+
+    [[ -f $tmpff ]] && echo -n "" > $tmpff
+    [[ -f $tmpxf ]] && echo -n "" > $tmpxf
+
+    [[ $1 == "--help" ]] && _help
+    _get_args "$@"
+
+    shift $((OPTIND-1))
+
+    _find "$@"
+    _copy_to_save
+}
+
+main "$@"
