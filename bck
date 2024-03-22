@@ -65,7 +65,7 @@ _ignore (){
         echo "=============="
     fi
 
-    find "${Xlist[@]}" > $tmpxf
+    find "${Xlist[@]}" > $tmpxf 2>/dev/null
 }
 
 _find (){
@@ -75,31 +75,31 @@ _find (){
         echo "=============="
     fi
 
-    _ignore
+    [[ -n $Xlist ]] && _ignore
 
     if [[ $onlyfile == 1 ]]; then
         if [[ -z $@ ]]; then
-            find .* * -maxdepth 0 -type f > $tmpff
+            find .* * -maxdepth 0 -type f > $tmpff 2>/dev/null
         else
-            find "$@" -maxdepth 0 -type f > $tmpff
+            find "$@" -maxdepth 0 -type f > $tmpff 2>/dev/null
         fi
 
     elif [[ $onlydir == 1 ]]; then
         if [[ -z $@ ]]; then
             while read line; do
-                find "$line" >> $tmpff
+                find "$line" >> $tmpff 2>/dev/null
             done < <(find .* * -type d)
         else
             while read line; do
-                find "$line" >> $tmpff
+                find "$line" >> $tmpff 2>/dev/null
             done < <(find "$@" -type d)
         fi
 
     else
         if [[ -z $@ ]]; then
-            find .* * > $tmpff
+            find .* * > $tmpff 2>/dev/null
         else
-            find "$@" > $tmpff
+            find "$@" > $tmpff 2>/dev/null
         fi
 
     fi
