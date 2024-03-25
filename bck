@@ -193,7 +193,7 @@ main (){
     tmpxf="/tmp/bck-ignore-list"
 
     [[ -f $tmpff ]] && echo -n "" > $tmpff
-    [[ -f $tmpxf ]] && echo -n "" > $tmpxf
+    [[ -f $tmpxf ]] && echo -n "" > $tmpxf || touch $tmpxf
 
     [[ $1 == "--help" ]] && _help
     _get_args "$@"
