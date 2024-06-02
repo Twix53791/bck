@@ -38,12 +38,13 @@
 #================================================
 
 _get_args (){
-    while getopts "hfdDOo:x:" arg; do
+    while getopts "hfdDOo:x:r" arg; do
         case $arg in
             f) [[ -z $onlydir ]] && onlyfile=1;;
             d) [[ -z $onlyfile ]] && onlydir=1;;
             o) bckdir="${OPTARG}";;
             O) bckdir="$PWD/.BACKUP";;
+            r) restore=1;;
             x)  OPTIND=$(($OPTIND - 1)) # set the index to the next arg (OPTARG)
                 Xlist=()
 
@@ -123,11 +124,27 @@ _copy_to_save (){
     while read fpath; do
         # Set the source/destination paths
         if [[ ${fpath:0:1} == "/" ]]; then
-            src="$fpath"
-            destination=$(dirname "$bckdir$fpath")
+            if [[ $fpath == *$bckdir* ]]; then
+                src="$fpath"
+                destination=$(dirname "${fpath/$bckdir/}")
+            elif [[ $restore == 1 ]]; then
+                src="$bckdir$fpath"
+                destination=$(dirname "$fpath")
+            else
+                src="$fpath"
+                destination=$(dirname "$bckdir$fpath")
+            fi
         else
-            src="$PWD/$fpath"
-            destination=$(dirname "$bckdir$PWD/$fpath")
+            if [[ $PWD == *$bckdir* ]]; then
+                src="$PWD/$fpath"
+                destination=$(dirname "${PWD/$bckdir/}/$fpath")
+            elif [[ $restore == 1 ]]; then
+                src="$bckdir$PWD/$fpath"
+                destination=$(dirname "$PWD/$fpath")
+            else
+                src="$PWD/$fpath"
+                destination=$(dirname "$bckdir$PWD/$fpath")
+            fi
         fi
 
         # Debug
@@ -155,10 +172,20 @@ _copy_to_save (){
         # Copy src to destination
         if [[ ! -O $src || ! -O $destination ]]; then
             [[ $debug == 1 ]] && echo "sudo cp -v -r -u"
-            sudo cp -v -r -u "$src" "$destination"
+
+            if [[ $src == *$bckdir* ]]; then
+                sudo cp -v -r "$src" "$destination"
+            else
+                sudo cp -v -r -u "$src" "$destination"
+            fi
         else
             [[ $debug == 1 ]] && echo "cp -v -r -u"
-            cp -v -r -u "$src" "$destination"
+
+            if [[ $src == *$bckdir* ]]; then
+                cp -v -r "$src" "$destination"
+            else
+                cp -v -r -u "$src" "$destination"
+            fi
         fi
     done < <(grep -v -x -f $tmpxf $tmpff)
 
@@ -180,6 +207,7 @@ options:
    -o [dir]             set the backup directory
    -O                   back up at '.BACKUP' in the current directory
    -x [expression]      exclude the locations matching the [expression] pattern
+   -r                   restore backup
    -h                   this help
    -D                   debug
 EOF
