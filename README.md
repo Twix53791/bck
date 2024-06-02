@@ -16,6 +16,7 @@ Back up manually any file/directory matching an expression with this command lin
    -o [dir]             set the backup directory
    -O                   back up at '.BACKUP' in the current directory
    -x [expression]      exclude the locations matching the [expression] pattern
+   -r                   restore backup
    -h                   this help
    -D                   debug
 ```
@@ -42,4 +43,7 @@ bck -D -f -x *.py *.pm -- a* b* /usr/local/bin/*
 
 bck -d
     # will back up all the directories of the current working directory.
+
+bck -r *
+   # will restore all the files from the backup files in the backup directory
 ```
